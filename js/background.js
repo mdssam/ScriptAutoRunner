@@ -1,26 +1,6 @@
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  var storageKey = 'SAR';
-  var data = localStorage.getItem(storageKey);
-  
-  if (request.method === 'SARgetLocalStorage') {
-    if (data) {
-      sendResponse({data: JSON.parse(data)});
-    }
-  }
-  else {
-    sendResponse({data: {
-        power: true,
-        scripts: [],
-        options: {
-          exclude: ''
-        }
-      }
-    });
-  }
-});
+// Background service worker for ScriptAutoRunner
 
-chrome.browserAction.onClicked.addListener((tab) => {
-  chrome.browserAction.setPopup({
-    'popup': 'popup.html'
-  });
+// Register on extension startup or installation
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('ScriptAutoRunner extension installed in Manifest V3 mode.');
 });

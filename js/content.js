@@ -1,15 +1,53 @@
-chrome.runtime.sendMessage({method: "SARgetLocalStorage"}, (response) => {
+chrome.storage.local.get(['SAR'], (result) => {
+  var data = result['SAR'] || {
+    power: true,
+    scripts: [],
+    options: {
+      exclude: ''
+    }
+  };
 
   function runScript(script) {
-    var tag = document.createElement('script');
-    
-    if (script.type === 'snippet') {
-      tag.innerHTML = script.code;
-    }
-    if (script.type === 'external') {
-      tag.src = script.src;
-    }
-    document.body.appendChild(tag);
+    const extensionId = chrome.runtime.id;
+    const baseUrl = "chrome-extension://" + extensionId;
+    const timestamp = new Date().getTime().toString();
+    const scriptId = script.id.toString();
+
+    // Listen for the runner's ready message
+    const messageHandler = (ev) => {
+      const msg = ev.data;
+      if (msg?.from === "sar-runner" && msg?.extension === extensionId && msg?.scriptId === scriptId && msg?.timestamp === timestamp) {
+        if (msg?.action === "ready") {
+          // Send the code to execute
+          window.postMessage({
+            from: "sar-extension",
+            extension: extensionId,
+            scriptId: scriptId,
+            timestamp: timestamp,
+            action: "run",
+            code: script.type === 'snippet' ? script.code : `
+              (function() {
+                var tag = document.createElement('script');
+                tag.src = ${JSON.stringify(script.src)};
+                document.body.appendChild(tag);
+              })();
+            `
+          }, "*");
+          window.removeEventListener("message", messageHandler);
+        }
+      }
+    };
+    window.addEventListener("message", messageHandler);
+
+    // Inject the runner script
+    const support = document.head || document.documentElement;
+    const tag = document.createElement('script');
+    const runnerUrl = baseUrl + "/js/lib/runner.js?ext=" + extensionId + "&id=" + scriptId + "&ts=" + timestamp;
+    tag.setAttribute("src", runnerUrl);
+    tag.onload = () => {
+      tag.remove();
+    };
+    support.appendChild(tag);
   }
 
   function isMatch(host) {
@@ -51,8 +89,6 @@ chrome.runtime.sendMessage({method: "SARgetLocalStorage"}, (response) => {
     
     return match;
   }
-  
-  var data = response.data;
   
   if (data.options && data.options.exclude) {
     if (isExcludeHost(data.options.exclude)) {

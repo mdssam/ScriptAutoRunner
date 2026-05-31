@@ -10,6 +10,10 @@
   <body>
     <div class="sra-wrapper" id="app" v-cloak>
       <div class="sra-setting">
+        <span class="sra-lock-btn" v-on:click="toggleLock" v-bind:class="{'sra-lock-btn--locked': isLocked, 'sra-lock-btn--unlocked': !isLocked}">
+          <svg v-if="isLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <svg v-if="!isLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+        </span>
         <i class="icon-cog" v-on:click="toggleSetting"></i>
       </div>
       <div class="sra-setting__content" v-el:setting>
@@ -25,7 +29,7 @@
                 <span><i class="icon-cloud-flash"></i></span>
                 <span> Exclude hostname</span>
               </div>
-              <textarea v-on:keyup="save" v-model="options .exclude" placeholder="Exclude hostnames, split by comma"></textarea>
+              <textarea v-on:keyup="save" v-model="options.exclude" :disabled="isLocked" placeholder="Exclude hostnames, split by comma"></textarea>
             </div>
           </div>
         </div>
@@ -34,7 +38,7 @@
         <i class="icon-flash"></i>
       </div>
       <div class="sra-main">
-        <div class="sra-btns">
+        <div class="sra-btns" v-show="!isLocked">
           <div class="sra-btns__battery">
             <i class="icon-battery"></i>
           </div>
@@ -55,8 +59,8 @@
               
               <div class="sra-script__content">
                 <div class="sra-flex sra-flex--head">
-                  <input class="sra-script__name" type="text" v-model="script.name">
-                  <div class="sra-script__btns">
+                  <input class="sra-script__name" type="text" v-model="script.name" v-on:keyup="save" v-on:blur="save" :disabled="isLocked">
+                  <div class="sra-script__btns" v-show="!isLocked">
                     <button class="sra-script__btn" v-on:click="moveDown($index)"><i class="icon-down-circled"></i></button>
                     <button class="sra-script__btn" v-on:click="moveUp($index)"><i class="icon-up-circled"></i></button>
                   </div>
@@ -66,16 +70,21 @@
                     <i v-bind:class="{'icon-code': script.type == 'snippet', 'icon-link': script.type == 'external'}"></i>
                   </div>
                   <div class="sra-script__snippet" v-if="script.type == 'snippet'">
-                    <textarea v-on:keyup="save" v-model="script.code" placeholder="Write your own code here."></textarea>
+                    <textarea v-on:keyup="save" v-model="script.code" :readonly="isLocked" placeholder="Write your own code here."></textarea>
                   </div>
                   <div class="sra-script__external" v-if="script.type == 'external'">
-                    <input v-on:blur="save" type="text" v-model="script.src" placeholder="Set JS file's URL. (e.g. //code.jquery.com/jquery-2.1.4.min.js)">
+                    <input v-on:blur="save" type="text" v-model="script.src" :disabled="isLocked" placeholder="Set JS file's URL. (e.g. //code.jquery.com/jquery-2.1.4.min.js)">
                   </div>
                 </div>
                 <div class="sra-flex sra-flex--foot">
                   <i class="icon-cloud-flash"></i>
-                  <input class="sra-script__host" v-model="script.host" v-on:blur="save" placeholder="Target hostname. By default, target to all host.">
-                  <button class="sra-script__btn remove" v-on:click="removeScript($index)"><i class="icon-trash"></i></button>
+                  <input class="sra-script__host" v-model="script.host" v-on:blur="save" :disabled="isLocked" placeholder="Target hostname. By default, target to all host.">
+                  <button class="sra-script__btn expand" v-on:click="openFullscreen(script)" v-if="script.type == 'snippet'">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sra-eye-svg"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  </button>
+                  <button class="sra-script__btn remove" v-on:click="confirmRemoveScript(script)" v-show="!isLocked">
+                    <i class="icon-trash"></i>
+                  </button>
                 </div>
               </div>
             </div>
@@ -85,9 +94,35 @@
           </li>
         </ul>
       </div>
+      
+      <!-- Full-Screen Code Editor Modal Overlay -->
+      <div class="sra-fullscreen-overlay" v-if="fullscreenScript !== null" v-cloak>
+        <div class="sra-fullscreen-editor">
+          <div class="sra-fullscreen-header">
+            <span class="sra-fullscreen-title"><i class="icon-code"></i> Editing Snippet: <strong>{{fullscreenScript.name}}</strong></span>
+            <div class="sra-fullscreen-actions">
+              <span class="sra-fullscreen-lock-btn" v-on:click="toggleLock" v-bind:class="{'sra-lock-btn--locked': isLocked, 'sra-lock-btn--unlocked': !isLocked}">
+                <svg v-if="isLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <svg v-if="!isLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+              </span>
+              <button class="sra-fullscreen-close" v-on:click="closeFullscreen"><i class="icon-cancel-circled"></i> Done</button>
+            </div>
+          </div>
+          <div class="sra-fullscreen-body">
+            <div class="sra-fullscreen-gutter" v-el:gutter>
+              <span v-for="n in lineNumbers">{{ n }}</span>
+            </div>
+            <div class="sra-editor-wrapper">
+              <pre class="sra-editor-highlight" v-el:highlightblock><code class="language-js" v-el:highlightcode></code></pre>
+              <textarea v-on:keyup="save" v-on:scroll="syncEditorScroll" v-on:input="updateHighlight" v-el:editortextarea v-model="fullscreenScript.code" :readonly="isLocked" placeholder="Write your own code here..." spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <script src="js/lib/lodash.min.js"></script>
     <script src="js/lib/vue.js"></script>
+    <script src="js/lib/prism.js"></script>
     <script src="js/options.js"></script>
   </body>
 </html>

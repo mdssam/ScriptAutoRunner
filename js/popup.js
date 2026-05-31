@@ -1,4 +1,6 @@
-chrome.tabs.getSelected(null, function(tab) {
+chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+  var tab = tabs[0];
+  if (!tab) return;
   var currentURL = tab.url;
   var url = new URL(tab.url);
   var hostname = url.hostname;
@@ -19,19 +21,36 @@ chrome.tabs.getSelected(null, function(tab) {
         }
       },
       ready() {
-        var data = JSON.parse(localStorage.getItem(storageKey));
-        if (data) {
-          this.$set('power', data.power);
-          this.$set('scripts', data.scripts);
-          if (data.options) {
-            this.$set('options', data.options);
+        chrome.storage.local.get([storageKey], (result) => {
+          var data = result[storageKey];
+          
+          // Migrate legacy localStorage if it exists and chrome.storage is empty
+          if (!data) {
+            var legacyData = window.localStorage.getItem(storageKey);
+            if (legacyData) {
+              try {
+                data = JSON.parse(legacyData);
+                // Save migrated data to chrome.storage
+                chrome.storage.local.set({ [storageKey]: data });
+              } catch(e) {
+                console.error('Error parsing legacy localStorage data', e);
+              }
+            }
           }
-        }
-        else {
-          this.$set('power', true);
-          this.$set('scripts', []);
-          this.$set('options', DEFAULT_OPTIONS);
-        }
+          
+          if (data) {
+            this.$set('power', data.power);
+            this.$set('scripts', data.scripts);
+            if (data.options) {
+              this.$set('options', data.options);
+            }
+          }
+          else {
+            this.$set('power', true);
+            this.$set('scripts', []);
+            this.$set('options', DEFAULT_OPTIONS);
+          }
+        });
       },
       methods: {
         togglePower() {
@@ -44,7 +63,8 @@ chrome.tabs.getSelected(null, function(tab) {
           this.save();
         },
         _setStorage(data) {
-          window.localStorage.setItem(storageKey, JSON.stringify(data));
+          var cleanData = JSON.parse(JSON.stringify(data));
+          chrome.storage.local.set({ [storageKey]: cleanData });
         },
         save() {
           this._setStorage(this.$data);
@@ -93,7 +113,7 @@ chrome.tabs.getSelected(null, function(tab) {
         },
         openOption() {
           var fileName = 'options.html';
-          var url = chrome.extension.getURL( fileName );
+          var url = chrome.runtime.getURL( fileName );
           chrome.tabs.create({
             url: url
           });

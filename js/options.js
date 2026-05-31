@@ -6,7 +6,8 @@
     type: 'snippet',
     src: '',
     code: '',
-    host: ''
+    host: '',
+    _confirmDelete: false
   };
 
   var DEFAULT_OPTIONS = {
@@ -20,7 +21,9 @@
     data: {
       power: true,
       scripts: [],
-      options: {}
+      options: {},
+      isLocked: false,
+      fullscreenScript: null
     },
     methods: {
       toggleSwitch() {
@@ -44,9 +47,10 @@
         
         return num + 1;
       },
-      removeScript(index) {
-        if (window.confirm('Are you sure you want to delete?')) {
-          this.scripts.$remove(index);
+      confirmRemoveScript(script) {
+        if (window.confirm('Are you sure you want to delete "' + script.name + '"?')) {
+          this.scripts.$remove(script);
+          this.save();
         }
       },
       moveUp(index) {
@@ -84,37 +88,72 @@
         this.save();
       },
       _setStorage(data) {
-        window.localStorage.setItem(storageKey, JSON.stringify(data));
+        var cleanData = JSON.parse(JSON.stringify(data));
+        chrome.storage.local.set({ [storageKey]: cleanData });
       },
-      _loadScripts() {
-        var data =  JSON.parse(window.localStorage.getItem(storageKey));
-        this.$set('power', data.power);
-        this.$set('scripts', data.scripts);
-        if (!data.options) {
-          this.$set('options', DEFAULT_OPTIONS);
-        }
-        else {
-          this.$set('options', data.options);
-        }
-      },
-      _init() {
-        var data = window.localStorage.getItem('SRA');
-        var newData = window.localStorage.getItem(storageKey);
-        
-        if (!newData) {
-          if (data) {
-            this._setStorage(JSON.parse(data));
+      _initAndLoad() {
+        chrome.storage.local.get([storageKey, 'SRA', 'isLocked'], (result) => {
+          var newData = result[storageKey];
+          var legacySRA = result['SRA'];
+          var isLockedStored = result['isLocked'];
+
+          if (isLockedStored !== undefined) {
+            this.$set('isLocked', isLockedStored);
+          } else {
+            this.$set('isLocked', false);
+          }
+          
+          if (!newData) {
+            // Check legacy localStorage for SAR
+            var legacySAR = window.localStorage.getItem(storageKey);
+            var legacySRAStr = window.localStorage.getItem('SRA');
+            
+            if (legacySAR) {
+              try {
+                newData = JSON.parse(legacySAR);
+              } catch(e) {
+                console.error(e);
+              }
+            } else if (legacySRAStr) {
+              try {
+                newData = JSON.parse(legacySRAStr);
+              } catch(e) {
+                console.error(e);
+              }
+            } else if (legacySRA) {
+              newData = legacySRA;
+            } else {
+              newData = { power: true, scripts: [], options: DEFAULT_OPTIONS };
+            }
+            // Save migrated data to chrome.storage
+            chrome.storage.local.set({ [storageKey]: newData });
+          }
+          
+          // Clear legacy data from window.localStorage and chrome.storage 'SRA' to keep it clean
+          try {
             window.localStorage.removeItem('SRA');
+            window.localStorage.removeItem(storageKey);
+          } catch(e) {}
+          chrome.storage.local.remove('SRA');
+
+          // Now populate the Vue model
+          this.$set('power', newData.power);
+          var loadedScripts = newData.scripts || [];
+          _.forEach(loadedScripts, function(s) {
+            s._confirmDelete = false;
+          });
+          this.$set('scripts', loadedScripts);
+          if (!newData.options) {
+            this.$set('options', DEFAULT_OPTIONS);
+          } else {
+            this.$set('options', newData.options);
           }
-          else {
-            this._setStorage({power: true, scripts: [], options: DEFAULT_OPTIONS});
-          }
-        }
-        else {
-          if (data) {
-            window.localStorage.removeItem('SRA');
-          }
-        }
+          
+          // Register Vue watch for auto-save only AFTER the data has been loaded
+          this.$watch('scripts', (val, oldVal) => {
+            this._setStorage(this.$data);
+          }, { deep: true });
+        });
       },
       toggleSetting() {
         if (_.includes(this.$els.setting.classList, 'show')) {
@@ -123,17 +162,65 @@
         else {
           this.$els.setting.classList.add('show');
         }
+      },
+      toggleLock() {
+        this.isLocked = !this.isLocked;
+        chrome.storage.local.set({ isLocked: this.isLocked });
+      },
+      openFullscreen(script) {
+        this.fullscreenScript = script;
+        document.body.classList.add('sra-modal-open');
+        // Focus the textarea, render highlighting, and sync scroll after DOM updates
+        this.$nextTick(function() {
+          if (this.$els.editortextarea) {
+            this.$els.editortextarea.focus();
+            this.updateHighlight();
+          }
+        }.bind(this));
+      },
+      closeFullscreen() {
+        this.fullscreenScript = null;
+        document.body.classList.remove('sra-modal-open');
+      },
+      updateHighlight() {
+        var el = this.$els.highlightcode;
+        if (el && this.fullscreenScript) {
+          var code = this.fullscreenScript.code || '';
+          if (code[code.length - 1] === '\n') {
+            code += ' ';
+          }
+          el.textContent = code;
+          if (window.Prism) {
+            window.Prism.highlightElement(el);
+          }
+        }
+        this.syncGutterScroll();
+      },
+      syncEditorScroll() {
+        if (this.$els.highlightblock && this.$els.editortextarea) {
+          this.$els.highlightblock.scrollTop = this.$els.editortextarea.scrollTop;
+          this.$els.highlightblock.scrollLeft = this.$els.editortextarea.scrollLeft;
+        }
+        this.syncGutterScroll();
+      },
+      syncGutterScroll() {
+        if (this.$els.gutter && this.$els.editortextarea) {
+          this.$els.gutter.scrollTop = this.$els.editortextarea.scrollTop;
+        }
+      }
+    },
+    computed: {
+      lineNumbers() {
+        if (!this.fullscreenScript || !this.fullscreenScript.code) {
+          return [1];
+        }
+        var lines = this.fullscreenScript.code.split('\n').length;
+        return _.range(1, Math.max(lines, 1) + 1);
       }
     },
     created() {
-      this._init();
-      this._loadScripts();
+      this._initAndLoad();
       this.save = this._save();
-    },
-    ready() {
-      this.$watch('scripts', function(val, oldVal) {
-        this._setStorage(this.$data);
-      });
     }
   });
   

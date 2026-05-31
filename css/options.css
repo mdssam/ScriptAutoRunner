@@ -54,6 +54,7 @@
     line-height: 1.2;
     font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
     min-height: 40px;
+    resize: vertical;
   }
   .show {
     display: block;
@@ -368,19 +369,42 @@
     line-height: 20px;
   }
   
+  .sra-script__snippet {
+    position: relative;
+    background-color: #1e1e1e !important;
+    border: 1px solid #3c3c3c !important;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+    min-width: 0;
+  }
+  .sra-script__snippet::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 32px;
+    background-color: #252526;
+    border-right: 1px solid #3c3c3c;
+    z-index: 1;
+    pointer-events: none;
+  }
   .sra-script__snippet textarea {
-    padding: 5px;
+    padding: 8px 8px 8px 40px !important;
     width: 100%;
     box-sizing: border-box;
-    min-height: 100px;
-    border-radius: 1px;
-    background-color: transparent;
-    color: inherit;
-    border: 1px solid currentColor;
+    min-height: 120px;
+    border-radius: 0;
+    background-color: transparent !important;
+    color: #d4d4d4 !important;
+    border: none !important;
     display: block;
-    font-size: 14px;
-    line-height: 1.2;
-    font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    font-family: Consolas, 'Courier New', Courier, Monaco, monospace !important;
+    resize: vertical;
+    outline: none;
   }
   
   .sra-script__btn {
@@ -428,6 +452,7 @@
   .sra-flex--content .sra-script__external,
   .sra-flex--foot .sra-script__host {
     flex-grow: 1;
+    min-width: 0;
   }
   .sra-flex--foot {
     padding-left: 30px;
@@ -436,3 +461,256 @@
   .sra-flex--foot .icon-cloud-flash {
     font-size: 18px;
   }
+
+/* ==========================================================================
+   Advanced IDE Upgrades (Lock Mode & Fullscreen Editor)
+   ========================================================================== */
+.sra-lock-btn {
+  margin-right: 20px;
+  cursor: pointer;
+  transition: color 250ms ease, transform 200ms ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+.sra-lock-btn:hover {
+  transform: scale(1.15);
+}
+.sra-lock-btn svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+.sra-lock-btn--locked {
+  color: #ff4757; /* Smooth red when locked */
+}
+.sra-lock-btn--unlocked {
+  color: #2ed573; /* Modern green when editable */
+}
+
+input:disabled, textarea:disabled, textarea[readonly] {
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+}
+
+.sra-script__btn.expand {
+  color: inherit;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 10px;
+  transition: transform 200ms ease, color 200ms ease;
+  vertical-align: middle;
+}
+.sra-script__btn.expand:hover {
+  transform: scale(1.15);
+  color: #3498db; /* Elegant blue on hover */
+}
+.sra-eye-svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.sra-script__btn.remove {
+  transition: all 250ms ease;
+  padding: 2px 6px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.sra-script__btn.remove.sra-btn--confirming {
+  background-color: rgba(255, 71, 87, 0.15) !important;
+  border: 1px solid #ff4757 !important;
+  color: #ff4757 !important;
+}
+
+.sra-fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.sra-fullscreen-editor {
+  width: 90vw;
+  height: 85vh;
+  background-color: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.sra-fullscreen-header {
+  background-color: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #d4d4d4;
+  user-select: none;
+}
+.sra-fullscreen-title {
+  font-size: 16px;
+}
+.sra-fullscreen-title strong {
+  color: #F3D32F;
+}
+.sra-fullscreen-actions {
+  display: flex;
+  align-items: center;
+}
+.sra-fullscreen-lock-btn {
+  cursor: pointer;
+  margin-right: 20px;
+  transition: color 250ms ease, transform 200ms ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+.sra-fullscreen-lock-btn:hover {
+  transform: scale(1.15);
+}
+.sra-fullscreen-lock-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+.sra-fullscreen-lock-btn.sra-lock-btn--locked {
+  color: #ff4757;
+}
+.sra-fullscreen-lock-btn.sra-lock-btn--unlocked {
+  color: #2ed573;
+}
+.sra-fullscreen-close {
+  background-color: #ff4757;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 200ms;
+}
+.sra-fullscreen-close:hover {
+  background-color: #ff2e44;
+}
+.sra-fullscreen-body {
+  flex-grow: 1;
+  position: relative;
+  display: flex;
+  background-color: #1e1e1e;
+  overflow: hidden; /* Constrain editor size strictly within modal flex bounds */
+}
+body.sra-modal-open {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+.sra-fullscreen-gutter {
+  width: 46px;
+  background-color: #1e1e1e;
+  border-right: 1px solid #2d2d2d;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  color: #858585;
+  font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+  user-select: none;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.sra-fullscreen-gutter span {
+  font-size: 12px;
+  height: 22.4px;
+  line-height: 22.4px;
+  text-align: right;
+  padding-right: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.sra-editor-wrapper {
+  position: relative;
+  flex-grow: 1;
+  height: 100%;
+  overflow: hidden;
+  background-color: #1e1e1e;
+}
+.sra-editor-highlight,
+.sra-editor-wrapper textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 12px 18px;
+  box-sizing: border-box;
+  font-family: Consolas, 'Courier New', Courier, Monaco, monospace !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  word-break: break-all !important;
+  overflow: auto;
+  border: none !important;
+  background-color: transparent !important;
+}
+.sra-editor-wrapper textarea {
+  z-index: 2;
+  color: transparent !important;
+  caret-color: #d4d4d4 !important;
+  resize: none !important;
+  outline: none !important;
+}
+.sra-editor-highlight {
+  z-index: 1;
+  pointer-events: none;
+  color: #d4d4d4 !important;
+}
+.sra-editor-highlight code {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: #d4d4d4 !important;
+}
+
+/* Chrome DevTools Snippet Syntax Highlighting Theme */
+.token.comment {
+  color: #7f8c8d !important;
+  font-style: italic;
+}
+.token.string, .token.template-string {
+  color: #e67e22 !important; /* Soft orange/red for strings */
+}
+.token.number, .token.boolean {
+  color: #f1c40f !important; /* Gold/yellow for numbers */
+}
+.token.keyword {
+  color: #3498db !important; /* Modern blue for keywords */
+}
+.token.control-flow {
+  color: #9b59b6 !important; /* Light purple for flow-control keywords */
+}
+.token.function {
+  color: #f39c12 !important; /* Warm gold/yellow for functions */
+}
+.token.regex {
+  color: #e74c3c !important; /* Red for regex */
+}
+.token.operator, .token.punctuation {
+  color: #d4d4d4 !important;
+}
